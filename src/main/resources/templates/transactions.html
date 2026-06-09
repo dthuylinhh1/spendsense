@@ -103,11 +103,86 @@
             padding: 20px;
             color: #666;
         }
+
+        .alert {
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #e8f7ee;
+            color: #166534;
+            border: 1px solid #b7e4c7;
+        }
+
+        .alert-warning {
+            background: #fff7e6;
+            color: #92400e;
+            border: 1px solid #f5d08a;
+        }
+
+        .alert-error {
+            background: #fdecec;
+            color: #991b1b;
+            border: 1px solid #f5b5b5;
+        }
+
+        .import-box {
+            background: white;
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+
+        .import-box form {
+            display: flex;
+            gap: 12px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        .import-box label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .import-box input {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .import-box button {
+            padding: 9px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            background: #222;
+            color: white;
+        }
     </style>
 </head>
 <body>
 <h1>SpendSense Transactions</h1>
+<div class="alert alert-success" th:if="${importSuccess}" th:text="${importSuccess}"></div>
+<div class="alert alert-warning" th:if="${importWarning}" th:text="${importWarning}"></div>
+<div class="alert alert-error" th:if="${importError}" th:text="${importError}"></div>
 
+<div class="import-box">
+    <form method="post" action="/transactions/import/cibc-pdf" enctype="multipart/form-data">
+        <div>
+            <label for="file">Import CIBC PDF Statement</label>
+            <input id="file" name="file" type="file" accept="application/pdf" required>
+        </div>
+
+        <button type="submit">Import PDF</button>
+    </form>
+</div>
 <div class="filters">
     <form method="get" action="/transactions/view">
         <div>
@@ -118,8 +193,9 @@
 
         <div>
             <label for="postedMonth">Posted Month</label>
-            <input id="postedMonth" name="postedMonth" type="month"
-                                th:value="${selectedPostedMonth}">
+            <input id="postedMonth" name="postedMonth" type="text"
+                    placeholder="2026-05"
+                    th:value="${selectedPostedMonth}">
         </div>
 
         <button type="submit">Apply Filters</button>
