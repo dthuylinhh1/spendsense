@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -78,6 +79,49 @@ public class TransactionPageController {
         model.addAttribute("totalAmount", totalAmount);
         model.addAttribute("statementImports", statementImportRepository.findAllByOrderByUploadedAtDesc());
 
+       if (hasStatementImport) {
+            var statementImport = statementImportRepository
+                    .findById(statementImportId)
+                    .orElseThrow();
+
+            LocalDate cycleStart = statementImport.getStatementStartDate();
+            LocalDate cycleEnd = statementImport.getStatementEndDate();
+
+            Long totalSpendingCents = transactionRepository
+                    .getTotalSpendingCentsByCycle(cycleStart, cycleEnd);
+
+            BigDecimal totalSpendingDollars = BigDecimal.valueOf(totalSpendingCents)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+            long transactionCount = transactionRepository
+                    .countTransactionsByCycle(cycleStart, cycleEnd);
+
+            List<SummaryRow> spendingByCard = transactionRepository
+                    .getSpendingByCardForCycle(cycleStart, cycleEnd)
+                    .stream()
+                    .map(row -> new SummaryRow(
+                            row[0] == null ? "Unknown card" : row[0].toString(),
+                            ((Number) row[1]).longValue()
+                    ))
+                    .toList();
+
+            List<SummaryRow> topCategories = transactionRepository
+                    .getTopCategoriesForCycle(cycleStart, cycleEnd)
+                    .stream()
+                    .limit(3)
+                    .map(row -> new SummaryRow(
+                            row[0] == null ? "Uncategorized" : row[0].toString(),
+                            ((Number) row[1]).longValue()
+                    ))
+                    .toList();
+
+            model.addAttribute("cycleStart", cycleStart);
+            model.addAttribute("cycleEnd", cycleEnd);
+            model.addAttribute("transactionCount", transactionCount);
+            model.addAttribute("totalSpendingDollars", totalSpendingDollars);
+            model.addAttribute("spendingByCard", spendingByCard);
+            model.addAttribute("topCategories", topCategories);
+        }
         return "transactions";
     }
 }

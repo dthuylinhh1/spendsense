@@ -215,7 +215,41 @@
         <button type="submit">Import PDF</button>
     </form>
 </div>
+<div class="summary-card">
+    <h2>Cycle Summary</h2>
 
+    <p>
+        <strong th:text="${cycleStart}"></strong>
+        to
+        <strong th:text="${cycleEnd}"></strong>
+    </p>
+
+    <p>
+        Transactions:
+        <strong th:text="${transactionCount}"></strong>
+    </p>
+
+    <p>
+        Total spending:
+        <strong th:text="${#numbers.formatCurrency(totalSpendingDollars)}"></strong>
+    </p>
+
+    <h3>By card</h3>
+    <ul>
+        <li th:each="row : ${spendingByCard}">
+            <span th:text="${row.label}"></span>:
+            <strong th:text="${#numbers.formatCurrency(row.totalDollars)}"></strong>
+        </li>
+    </ul>
+
+    <h3>Top categories</h3>
+    <ul>
+        <li th:each="row : ${topCategories}">
+            <span th:text="${row.label}"></span>:
+            <strong th:text="${#numbers.formatCurrency(row.totalDollars)}"></strong>
+        </li>
+    </ul>
+</div>
 <div class="table-wrap statement-history">
     <h2>Statement Import History</h2>
 
