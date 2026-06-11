@@ -25,50 +25,49 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
     );
 
     List<TransactionEntity> findByStatementImport_IdOrderByPostedDateDescIdDesc(Long statementImportId);
-
+    List<TransactionEntity> findByStatementImport_IdAndCardRefOrderByPostedDateDescIdDesc(
+        Long statementImportId,
+        String cardRef
+        );
     boolean existsByImportHash(String importHash);
 
     @Query("""
         select coalesce(sum(t.amountCents), 0)
         from TransactionEntity t
-        where t.postedDate between :startDate and :endDate
-    """)
-    Long getTotalSpendingCentsByCycle(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-    );
+        where t.statementImport.id = :statementImportId
+        """)
+        Long getTotalSpendingCentsByStatementImport(
+                @Param("statementImportId") Long statementImportId
+        );
 
-    @Query("""
+        @Query("""
         select count(t)
         from TransactionEntity t
-        where t.postedDate between :startDate and :endDate
-    """)
-    long countTransactionsByCycle(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-    );
+        where t.statementImport.id = :statementImportId
+        """)
+        long countTransactionsByStatementImport(
+                @Param("statementImportId") Long statementImportId
+        );
 
-    @Query("""
+        @Query("""
         select t.cardRef, coalesce(sum(t.amountCents), 0)
         from TransactionEntity t
-        where t.postedDate between :startDate and :endDate
+        where t.statementImport.id = :statementImportId
         group by t.cardRef
         order by coalesce(sum(t.amountCents), 0) desc
-    """)
-    List<Object[]> getSpendingByCardForCycle(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-    );
+        """)
+        List<Object[]> getSpendingByCardForStatementImport(
+                @Param("statementImportId") Long statementImportId
+        );
 
-    @Query("""
+        @Query("""
         select t.bankCategory, coalesce(sum(t.amountCents), 0)
         from TransactionEntity t
-        where t.postedDate between :startDate and :endDate
+        where t.statementImport.id = :statementImportId
         group by t.bankCategory
         order by coalesce(sum(t.amountCents), 0) desc
-    """)
-    List<Object[]> getTopCategoriesForCycle(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-    );
+        """)
+        List<Object[]> getTopCategoriesForStatementImport(
+                @Param("statementImportId") Long statementImportId
+        );
 }

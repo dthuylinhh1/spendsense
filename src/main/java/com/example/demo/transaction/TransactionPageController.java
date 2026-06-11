@@ -41,8 +41,16 @@ public class TransactionPageController {
         boolean hasStatementImport = statementImportId != null;
 
         if (hasStatementImport) {
-            transactions = transactionRepository
-                    .findByStatementImport_IdOrderByPostedDateDescIdDesc(statementImportId);
+            if (hasCardRef) {
+                transactions = transactionRepository
+                        .findByStatementImport_IdAndCardRefOrderByPostedDateDescIdDesc(
+                                statementImportId,
+                                cardRef
+                        );
+            } else {
+                transactions = transactionRepository
+                        .findByStatementImport_IdOrderByPostedDateDescIdDesc(statementImportId);
+            }
         } else if (hasPostedMonth) {
             YearMonth yearMonth = YearMonth.parse(postedMonth);
             LocalDate startDate = yearMonth.atDay(1);
@@ -88,16 +96,16 @@ public class TransactionPageController {
             LocalDate cycleEnd = statementImport.getStatementEndDate();
 
             Long totalSpendingCents = transactionRepository
-                    .getTotalSpendingCentsByCycle(cycleStart, cycleEnd);
+                    .getTotalSpendingCentsByStatementImport(statementImportId);
 
             BigDecimal totalSpendingDollars = BigDecimal.valueOf(totalSpendingCents)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
             long transactionCount = transactionRepository
-                    .countTransactionsByCycle(cycleStart, cycleEnd);
+                    .countTransactionsByStatementImport(statementImportId);
 
             List<SummaryRow> spendingByCard = transactionRepository
-                    .getSpendingByCardForCycle(cycleStart, cycleEnd)
+                    .getSpendingByCardForStatementImport(statementImportId)
                     .stream()
                     .map(row -> new SummaryRow(
                             row[0] == null ? "Unknown card" : row[0].toString(),
@@ -106,7 +114,7 @@ public class TransactionPageController {
                     .toList();
 
             List<SummaryRow> topCategories = transactionRepository
-                    .getTopCategoriesForCycle(cycleStart, cycleEnd)
+                    .getTopCategoriesForStatementImport(statementImportId)
                     .stream()
                     .limit(3)
                     .map(row -> new SummaryRow(

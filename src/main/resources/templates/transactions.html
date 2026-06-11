@@ -216,7 +216,12 @@
     </form>
 </div>
 <div class="summary-card" th:if="${selectedStatementImportId != ''}">
-    <h2>Cycle Summary</h2>
+    <h2>
+        Cycle Summary:
+        <span th:text="${cycleStart}"></span>
+        to
+        <span th:text="${cycleEnd}"></span>
+    </h2>
 
     <p class="summary-insight">
         You spent
