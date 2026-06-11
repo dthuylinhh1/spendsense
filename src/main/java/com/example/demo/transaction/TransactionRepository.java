@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TransactionRepository extends JpaRepository<TransactionEntity, Long> {
+
     boolean existsByImportHash(String importHash);
 
     List<TransactionEntity> findAllByOrderByPostedDateDescIdDesc();
@@ -13,13 +14,15 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
     List<TransactionEntity> findByCardRefOrderByPostedDateDescIdDesc(String cardRef);
 
     List<TransactionEntity> findByPostedDateBetweenOrderByPostedDateDescIdDesc(
-            LocalDate startDate,
-            LocalDate endDate
+            LocalDate start,
+            LocalDate end
     );
 
     List<TransactionEntity> findByCardRefAndPostedDateBetweenOrderByPostedDateDescIdDesc(
             String cardRef,
-            LocalDate startDate,
-            LocalDate endDate
+            LocalDate start,
+            LocalDate end
     );
+
+    List<TransactionEntity> findByStatementImport_IdOrderByPostedDateDescIdDesc(Long statementImportId);
 }

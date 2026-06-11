@@ -3,10 +3,16 @@ package com.example.demo.transaction;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.LocalDate;
+import com.example.demo.entity.StatementImportEntity;
+
 
 @Entity
 @Table(name = "transactions")
 public class TransactionEntity {
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "statement_import_id")
+  private StatementImportEntity statementImport;
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,6 +52,14 @@ public class TransactionEntity {
   private Instant createdAt = Instant.now();
 
   public Long getId() { return id; }
+
+  public StatementImportEntity getStatementImport() {
+    return statementImport;
+  }
+
+  public void setStatementImport(StatementImportEntity statementImport) {
+      this.statementImport = statementImport;
+  }
 
   public Long getAccountId() { return accountId; }
   public void setAccountId(Long accountId) { this.accountId = accountId; }

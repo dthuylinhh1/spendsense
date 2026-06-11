@@ -15,6 +15,11 @@
             margin-bottom: 16px;
         }
 
+        h2 {
+            margin-top: 0;
+            margin-bottom: 14px;
+        }
+
         .filters {
             background: white;
             padding: 16px;
@@ -25,9 +30,14 @@
 
         .filters form {
             display: flex;
-            gap: 12px;
-            align-items: end;
+            gap: 14px;
+            align-items: flex-end;
             flex-wrap: wrap;
+        }
+
+        .filters form > div {
+            display: flex;
+            flex-direction: column;
         }
 
         .filters label {
@@ -36,21 +46,37 @@
             margin-bottom: 6px;
         }
 
-        .filters input {
+        .filters input,
+        .filters select {
+            box-sizing: border-box;
             padding: 8px 10px;
             border: 1px solid #ccc;
             border-radius: 6px;
-            min-width: 180px;
+            height: 38px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .filters input {
+            width: 220px;
+        }
+
+        .filters select {
+            width: 280px;
         }
 
         .filters button,
         .filters a {
-            padding: 9px 14px;
+            height: 38px;
+            padding: 0 16px;
             border-radius: 6px;
             text-decoration: none;
             border: none;
             cursor: pointer;
             font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .filters button {
@@ -69,6 +95,10 @@
             border-radius: 10px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.08);
             overflow-x: auto;
+        }
+
+        .statement-history {
+            margin-bottom: 20px;
         }
 
         table {
@@ -168,7 +198,9 @@
     </style>
 </head>
 <body>
+
 <h1>SpendSense Transactions</h1>
+
 <div class="alert alert-success" th:if="${importSuccess}" th:text="${importSuccess}"></div>
 <div class="alert alert-warning" th:if="${importWarning}" th:text="${importWarning}"></div>
 <div class="alert alert-error" th:if="${importError}" th:text="${importError}"></div>
@@ -183,6 +215,43 @@
         <button type="submit">Import PDF</button>
     </form>
 </div>
+
+<div class="table-wrap statement-history">
+    <h2>Statement Import History</h2>
+
+    <table th:if="${!#lists.isEmpty(statementImports)}">
+        <thead>
+        <tr>
+            <th>Uploaded At</th>
+            <th>Source</th>
+            <th>Statement Cycle</th>
+            <th>Filename</th>
+            <th>Inserted</th>
+            <th>Skipped</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="imp : ${statementImports}">
+            <td th:text="${imp.uploadedAt}"></td>
+            <td th:text="${imp.source}"></td>
+            <td>
+                <span th:text="${imp.statementStartDate}"></span>
+                to
+                <span th:text="${imp.statementEndDate}"></span>
+            </td>
+            <td th:text="${imp.filename}"></td>
+            <td th:text="${imp.rowsInserted}"></td>
+            <td th:text="${imp.rowsSkipped}"></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="empty" th:if="${#lists.isEmpty(statementImports)}">
+        No statement imports yet.
+    </div>
+</div>
+
 <div class="filters">
     <form method="get" action="/transactions/view">
         <div>
@@ -194,8 +263,22 @@
         <div>
             <label for="postedMonth">Posted Month</label>
             <input id="postedMonth" name="postedMonth" type="text"
-                    placeholder="2026-05"
-                    th:value="${selectedPostedMonth}">
+                   placeholder="2026-05"
+                   th:value="${selectedPostedMonth}">
+        </div>
+
+        <div>
+            <label for="statementImportId">Statement Cycle</label>
+            <select id="statementImportId" name="statementImportId">
+                <option value="">All statement cycles</option>
+
+                <option th:each="imp : ${statementImports}"
+                        th:value="${imp.id}"
+                        th:selected="${selectedStatementImportId != '' and selectedStatementImportId == imp.id}"
+                        th:text="${imp.statementStartDate + ' to ' + imp.statementEndDate}">
+                    2026-04-22 to 2026-05-21
+                </option>
+            </select>
         </div>
 
         <button type="submit">Apply Filters</button>
@@ -222,6 +305,7 @@
             <th class="amount">Amount</th>
         </tr>
         </thead>
+
         <tbody>
         <tr th:each="tx : ${transactions}">
             <td th:text="${tx.id}"></td>
@@ -240,5 +324,6 @@
         No transactions found.
     </div>
 </div>
+
 </body>
 </html>

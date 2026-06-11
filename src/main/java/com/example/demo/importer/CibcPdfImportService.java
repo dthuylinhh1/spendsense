@@ -5,6 +5,10 @@ import com.example.demo.transaction.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.demo.entity.StatementImportEntity;
+import com.example.demo.repository.StatementImportRepository;
+import java.time.LocalDateTime;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
@@ -17,10 +21,15 @@ import java.util.regex.Pattern;
 public class CibcPdfImportService {
 
   private final TransactionRepository repo;
+  private final StatementImportRepository statementImportRepository;
 
-  public CibcPdfImportService(TransactionRepository repo) {
+  public CibcPdfImportService(
+      TransactionRepository repo,
+      StatementImportRepository statementImportRepository
+  ){
     this.repo = repo;
-  }
+    this.statementImportRepository = statementImportRepository;
+  }   
 
   // Normal one-line row:
   // Nov 25 Nov 26 Columbia Sportswear CA London ON Retail and Grocery 119.03
@@ -62,10 +71,32 @@ public class CibcPdfImportService {
   public record ImportResult(int rowsInserted, int rowsSkipped) {}
 
   public ImportResult importStatement(MultipartFile file) throws Exception {
-    String text = PdfTextExtractor.extractAllText(file.getInputStream());
+    byte[] fileBytes = file.getBytes();
+    String fileHash = sha256Bytes(fileBytes);
+
+    if (statementImportRepository.findByFileHash(fileHash).isPresent()) {
+      return new ImportResult(0, 0);
+    }
+
+    String text = PdfTextExtractor.extractAllText(new java.io.ByteArrayInputStream(fileBytes));
     List<String> rawLines = Arrays.asList(text.split("\\R"));
 
     int statementYear = guessStatementYear(text);
+
+    LocalDate statementStartDate = guessStatementStartDate(text);
+    LocalDate statementEndDate = guessStatementEndDate(text);
+
+    StatementImportEntity statementImport = new StatementImportEntity();
+    statementImport.setFilename(file.getOriginalFilename());
+    statementImport.setSource("CIBC");
+    statementImport.setStatementStartDate(statementStartDate);
+    statementImport.setStatementEndDate(statementEndDate);
+    statementImport.setUploadedAt(LocalDateTime.now());
+    statementImport.setRowsInserted(0);
+    statementImport.setRowsSkipped(0);
+    statementImport.setFileHash(fileHash);
+
+    statementImport = statementImportRepository.save(statementImport);
 
     String currentCardRef = null;
     boolean inChargesSection = false;
@@ -111,7 +142,7 @@ public class CibcPdfImportService {
       Matcher normal = TX_ROW.matcher(line);
       if (normal.matches()) {
         ParsedRow row = buildNormalRow(statementYear, currentCardRef, normal);
-        if (saveIfNew(row)) inserted++;
+        if (saveIfNew(row, statementImport)) inserted++;
         else skipped++;
         continue;
       }
@@ -140,7 +171,7 @@ public class CibcPdfImportService {
             row.currency = "CAD";
             row.source = "CIBC";
 
-            if (saveIfNew(row)) inserted++;
+            if (saveIfNew(row, statementImport)) inserted++;
             else skipped++;
 
             i += 2; // consume the next 2 lines
@@ -149,6 +180,10 @@ public class CibcPdfImportService {
         }
       }
     }
+
+    statementImport.setRowsInserted(inserted);
+    statementImport.setRowsSkipped(skipped);
+    statementImportRepository.save(statementImport);
 
     return new ImportResult(inserted, skipped);
   }
@@ -185,7 +220,7 @@ public class CibcPdfImportService {
     return row;
   }
 
-  private boolean saveIfNew(ParsedRow row) throws Exception {
+  private boolean saveIfNew(ParsedRow row, StatementImportEntity statementImport) throws Exception {
     String importHash = sha256(
         row.accountId + "|" +
         row.transDate + "|" +
@@ -210,6 +245,7 @@ public class CibcPdfImportService {
     tx.setCurrency(row.currency);
     tx.setSource(row.source);
     tx.setImportHash(importHash);
+    tx.setStatementImport(statementImport);
 
     repo.save(tx);
     return true;
@@ -244,6 +280,34 @@ public class CibcPdfImportService {
     return Year.now().getValue();
   }
 
+  private static LocalDate guessStatementStartDate(String fullText) {
+    Pattern p = Pattern.compile(
+        "Transactions from\\s+([A-Za-z]+)\\s+(\\d{1,2})\\s+to\\s+([A-Za-z]+)\\s+(\\d{1,2}),\\s+(20\\d{2})"
+    );
+
+    Matcher m = p.matcher(fullText);
+    if (m.find()) {
+      int year = Integer.parseInt(m.group(5));
+      return parseDate(year, m.group(1).substring(0, 3), m.group(2));
+    }
+
+    return null;
+  }
+
+  private static LocalDate guessStatementEndDate(String fullText) {
+    Pattern p = Pattern.compile(
+        "Transactions from\\s+([A-Za-z]+)\\s+(\\d{1,2})\\s+to\\s+([A-Za-z]+)\\s+(\\d{1,2}),\\s+(20\\d{2})"
+    );
+
+    Matcher m = p.matcher(fullText);
+    if (m.find()) {
+      int year = Integer.parseInt(m.group(5));
+      return parseDate(year, m.group(3).substring(0, 3), m.group(4));
+    }
+
+    return null;
+  }
+
   private static LocalDate parseDate(int year, String mon, String day) {
     int month = switch (mon) {
       case "Jan" -> 1;
@@ -271,6 +335,16 @@ public class CibcPdfImportService {
   private static String sha256(String input) throws Exception {
     MessageDigest md = MessageDigest.getInstance("SHA-256");
     byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
+    StringBuilder sb = new StringBuilder();
+    for (byte b : hash) {
+      sb.append(String.format("%02x", b));
+    }
+    return sb.toString();
+  }
+
+  private static String sha256Bytes(byte[] input) throws Exception {
+    MessageDigest md = MessageDigest.getInstance("SHA-256");
+    byte[] hash = md.digest(input);
     StringBuilder sb = new StringBuilder();
     for (byte b : hash) {
       sb.append(String.format("%02x", b));
