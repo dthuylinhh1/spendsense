@@ -70,4 +70,15 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
         List<Object[]> getTopCategoriesForStatementImport(
                 @Param("statementImportId") Long statementImportId
         );
+
+        @Query("""
+        select t.bankCategory, coalesce(sum(t.amountCents), 0)
+        from TransactionEntity t
+        where t.statementImport.id = :statementImportId
+        group by t.bankCategory
+        order by coalesce(sum(t.amountCents), 0) desc
+        """)
+        List<Object[]> getCategoryTotalsByStatementImport(
+                @Param("statementImportId") Long statementImportId
+        );
 }

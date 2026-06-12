@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Compare Statement Cycles</title>
+</head>
+<body>
+
+<h1>Compare Statement Cycles</h1>
+
+<form method="get" action="/transactions/compare">
+    <label>
+        Cycle A
+        <select name="cycleAId">
+            <option value="">Select cycle</option>
+            <option
+                th:each="statementImport : ${statementImports}"
+                th:value="${statementImport.id}"
+                th:selected="${statementImport.id == selectedCycleAId}"
+                th:text="${statementImport.statementStartDate + ' to ' + statementImport.statementEndDate + ' - ' + statementImport.source}">
+            </option>
+        </select>
+    </label>
+
+    <label>
+        Cycle B
+        <select name="cycleBId">
+            <option value="">Select cycle</option>
+            <option
+                th:each="statementImport : ${statementImports}"
+                th:value="${statementImport.id}"
+                th:selected="${statementImport.id == selectedCycleBId}"
+                th:text="${statementImport.statementStartDate + ' to ' + statementImport.statementEndDate + ' - ' + statementImport.source}">
+            </option>
+        </select>
+    </label>
+
+    <button type="submit">Compare</button>
+</form>
+
+<div th:if="${hasComparison}">
+    <h2>Comparison Summary</h2>
+
+    <p>
+        Cycle A:
+        <strong th:text="${cycleA.statementStartDate + ' to ' + cycleA.statementEndDate}"></strong>
+        —
+        <strong th:text="${#numbers.formatCurrency(cycleATotalDollars)}"></strong>
+    </p>
+
+    <p>
+        Cycle B:
+        <strong th:text="${cycleB.statementStartDate + ' to ' + cycleB.statementEndDate}"></strong>
+        —
+        <strong th:text="${#numbers.formatCurrency(cycleBTotalDollars)}"></strong>
+    </p>
+
+    <p>
+        Difference:
+        <strong th:text="${#numbers.formatCurrency(differenceDollars)}"></strong>
+    </p>
+
+    <h2>Category Changes</h2>
+
+    <table border="1" cellpadding="8">
+        <thead>
+        <tr>
+            <th>Category</th>
+            <th>Cycle A</th>
+            <th>Cycle B</th>
+            <th>Difference</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="row : ${categoryComparisonRows}">
+            <td th:text="${row.category}"></td>
+            <td th:text="${#numbers.formatCurrency(row.cycleADollars)}"></td>
+            <td th:text="${#numbers.formatCurrency(row.cycleBDollars)}"></td>
+            <td th:text="${#numbers.formatCurrency(row.differenceDollars)}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
