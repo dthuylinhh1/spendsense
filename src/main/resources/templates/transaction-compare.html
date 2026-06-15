@@ -1,63 +1,345 @@
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f7f8fa;
+        color: #111827;
+    }
+
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 48px 40px;
+    }
+
+    .page-header {
+        margin-bottom: 24px;
+    }
+
+    h1 {
+        font-size: 36px;
+        line-height: 1.1;
+        margin: 0 0 10px 0;
+        color: #111827;
+    }
+
+    h2 {
+        margin-top: 36px;
+        margin-bottom: 16px;
+        color: #111827;
+    }
+
+    .page-subtitle {
+        margin: 0;
+        color: #6b7280;
+        font-size: 15px;
+        max-width: 760px;
+    }
+
+    .filter-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        margin-bottom: 32px;
+    }
+
+    .compare-form {
+        display: flex;
+        align-items: end;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin: 0;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 280px;
+    }
+
+    .form-group label {
+        font-size: 14px;
+        font-weight: 700;
+        color: #374151;
+    }
+
+    select {
+        height: 40px;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: white;
+        color: #111827;
+        font-size: 14px;
+    }
+
+    select:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .primary-button {
+        height: 40px;
+        padding: 0 18px;
+        border-radius: 8px;
+        border: none;
+        background: #2563eb;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .primary-button:hover {
+        background: #1d4ed8;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin: 20px 0 32px 0;
+    }
+
+    .summary-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .summary-label {
+        font-size: 14px;
+        color: #6b7280;
+        margin-bottom: 8px;
+    }
+
+    .summary-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 8px;
+    }
+
+    .summary-note {
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        margin-bottom: 28px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    th,
+    td {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 10px 12px;
+        text-align: left;
+        font-size: 14px;
+    }
+
+    th {
+        background: #f3f4f6;
+        font-weight: 700;
+        color: #374151;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover {
+        background: #f9fafb;
+    }
+
+    p {
+        line-height: 1.5;
+    }
+
+    strong {
+        color: #111827;
+    }
+
+    .summary-card-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+        margin-bottom: 14px;
+    }
+
+    .toggle-buttons,
+    .tab-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .toggle-button,
+    .tab-button {
+        border: 1px solid #d1d5db;
+        background: #f9fafb;
+        color: #374151;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .toggle-button.active,
+    .tab-button.active {
+        background: #2563eb;
+        color: white;
+        border-color: #2563eb;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 16px;
+        margin-top: 36px;
+        margin-bottom: 16px;
+    }
+
+    .section-header h2 {
+        margin: 0 0 6px 0;
+    }
+
+    .section-subtitle {
+        margin: 0;
+        color: #6b7280;
+        font-size: 14px;
+    }
+
+    .hidden {
+        display: none;
+    }
+</style>
+
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Compare Statement Cycles</title>
 </head>
 <body>
+<div class="page-container">
 
-<h1>Compare Statement Cycles</h1>
+<div class="page-header">
+    <div>
+        <h1>Compare Statement Cycles</h1>
+        <p class="page-subtitle">
+            Select two statement cycles to compare total spending, category changes, recurring charges, and one-time transactions.
+        </p>
+    </div>
+</div>
 
-<form method="get" action="/transactions/compare">
-    <label>
-        Cycle A
-        <select name="cycleAId">
-            <option value="">Select cycle</option>
-            <option
-                th:each="statementImport : ${statementImports}"
-                th:value="${statementImport.id}"
-                th:selected="${statementImport.id == selectedCycleAId}"
-                th:text="${statementImport.statementStartDate + ' to ' + statementImport.statementEndDate + ' - ' + statementImport.source}">
-            </option>
-        </select>
-    </label>
+<div class="filter-card">
+    <form method="get" action="/transactions/compare" class="compare-form">
+        <div class="form-group">
+            <label for="cycleAId">Cycle A</label>
+            <select id="cycleAId" name="cycleAId">
+                <option value="">Select cycle</option>
+                <option
+                    th:each="statementImport : ${statementImports}"
+                    th:value="${statementImport.id}"
+                    th:selected="${statementImport.id == selectedCycleAId}"
+                    th:text="${statementImport.statementStartDate + ' to ' + statementImport.statementEndDate + ' - ' + statementImport.source}">
+                </option>
+            </select>
+        </div>
 
-    <label>
-        Cycle B
-        <select name="cycleBId">
-            <option value="">Select cycle</option>
-            <option
-                th:each="statementImport : ${statementImports}"
-                th:value="${statementImport.id}"
-                th:selected="${statementImport.id == selectedCycleBId}"
-                th:text="${statementImport.statementStartDate + ' to ' + statementImport.statementEndDate + ' - ' + statementImport.source}">
-            </option>
-        </select>
-    </label>
+        <div class="form-group">
+            <label for="cycleBId">Cycle B</label>
+            <select id="cycleBId" name="cycleBId">
+                <option value="">Select cycle</option>
+                <option
+                    th:each="statementImport : ${statementImports}"
+                    th:value="${statementImport.id}"
+                    th:selected="${statementImport.id == selectedCycleBId}"
+                    th:text="${statementImport.statementStartDate + ' to ' + statementImport.statementEndDate + ' - ' + statementImport.source}">
+                </option>
+            </select>
+        </div>
 
-    <button type="submit">Compare</button>
-</form>
+        <button type="submit" class="primary-button">Compare</button>
+    </form>
+</div>
 
 <div th:if="${hasComparison}">
     <h2>Comparison Summary</h2>
 
-    <p>
-        Cycle A:
-        <strong th:text="${cycleA.statementStartDate + ' to ' + cycleA.statementEndDate}"></strong>
-        —
-        <strong th:text="${#numbers.formatCurrency(cycleATotalDollars)}"></strong>
-    </p>
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <div>
+                    <div class="summary-label">Cycle A</div>
+                    <div class="summary-note"
+                        th:text="${cycleA.statementStartDate + ' to ' + cycleA.statementEndDate}">
+                    </div>
+                </div>
 
-    <p>
-        Cycle B:
-        <strong th:text="${cycleB.statementStartDate + ' to ' + cycleB.statementEndDate}"></strong>
-        —
-        <strong th:text="${#numbers.formatCurrency(cycleBTotalDollars)}"></strong>
-    </p>
+                <div class="toggle-buttons">
+                    <button type="button" class="toggle-button active" onclick="showCycleMetric('cycleA', 'total', this)">
+                        Total
+                    </button>
+                    <button type="button" class="toggle-button" onclick="showCycleMetric('cycleA', 'only', this)">
+                        Without Fixed
+                    </button>
+                </div>
+            </div>
 
-    <p>
-        Difference:
-        <strong th:text="${#numbers.formatCurrency(differenceDollars)}"></strong>
-    </p>
+            <div id="cycleA-total" class="summary-value" th:text="${'$' + cycleATotalDollars}"></div>
+            <div id="cycleA-only" class="summary-value hidden" th:text="${'$' + cycleAOnlyTotalDollars}"></div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-card-header">
+                <div>
+                    <div class="summary-label">Cycle B</div>
+                    <div class="summary-note"
+                        th:text="${cycleB.statementStartDate + ' to ' + cycleB.statementEndDate}">
+                    </div>
+                </div>
+
+                <div class="toggle-buttons">
+                    <button type="button" class="toggle-button active" onclick="showCycleMetric('cycleB', 'total', this)">
+                        Total
+                    </button>
+                    <button type="button" class="toggle-button" onclick="showCycleMetric('cycleB', 'only', this)">
+                        Without Fixed
+                    </button>
+                </div>
+            </div>
+
+            <div id="cycleB-total" class="summary-value" th:text="${'$' + cycleBTotalDollars}"></div>
+            <div id="cycleB-only" class="summary-value hidden" th:text="${'$' + cycleBOnlyTotalDollars}"></div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-label">Difference</div>
+            <div class="summary-value" th:text="${'$' + differenceDollars}"></div>
+            <div class="summary-note">Cycle B minus Cycle A</div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-label">Fixed / Recurring Total</div>
+            <div class="summary-value" th:text="${'$' + recurringTotalDollars}"></div>
+            <div class="summary-note">Found in both cycles</div>
+        </div>
+    </div>
 
     <h2>Category Changes</h2>
 
@@ -79,7 +361,149 @@
         </tr>
         </tbody>
     </table>
+
+    <h2>Possible Recurring / Fixed Transactions</h2>
+
+    <p>
+        Total fixed transactions:
+        <strong th:text="${'$' + recurringTotalDollars}"></strong>
+    </p>
+
+    <div th:if="${#lists.isEmpty(recurringTransactionRows)}">
+        <p>No recurring transactions found using exact description + card + amount match.</p>
+    </div>
+
+    <table border="1" th:if="${!#lists.isEmpty(recurringTransactionRows)}">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Card</th>
+                <th>Category</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="row : ${recurringTransactionRows}">
+                <td th:text="${row.description}"></td>
+                <td th:text="${row.cardRef}"></td>
+                <td th:text="${row.category}"></td>
+                <td th:text="${'$' + row.amountDollars}"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="section-header">
+        <div>
+            <h2>Cycle-Only Transactions</h2>
+            <p class="section-subtitle">
+                Transactions that appear in one selected cycle but not the other.
+            </p>
+        </div>
+
+        <div class="tab-buttons">
+            <button type="button" class="tab-button active" onclick="showCycleOnlyTable('cycleAOnly', this)">
+                Cycle A Only
+            </button>
+            <button type="button" class="tab-button" onclick="showCycleOnlyTable('cycleBOnly', this)">
+                Cycle B Only
+            </button>
+        </div>
+    </div>
+
+    <div id="cycleAOnly-table">
+        <p>
+            Total Cycle A only:
+            <strong th:text="${'$' + cycleAOnlyTotalDollars}"></strong>
+        </p>
+
+        <div th:if="${#lists.isEmpty(cycleAOnlyRows)}">
+            <p>No Cycle A only transactions found.</p>
+        </div>
+
+        <table th:if="${!#lists.isEmpty(cycleAOnlyRows)}">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Card</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="row : ${cycleAOnlyRows}">
+                    <td th:text="${row.date}"></td>
+                    <td th:text="${row.description}"></td>
+                    <td th:text="${row.cardRef}"></td>
+                    <td th:text="${row.category}"></td>
+                    <td th:text="${'$' + row.amountDollars}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="cycleBOnly-table" class="hidden">
+        <p>
+            Total Cycle B only:
+            <strong th:text="${'$' + cycleBOnlyTotalDollars}"></strong>
+        </p>
+
+        <div th:if="${#lists.isEmpty(cycleBOnlyRows)}">
+            <p>No Cycle B only transactions found.</p>
+        </div>
+
+        <table th:if="${!#lists.isEmpty(cycleBOnlyRows)}">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Card</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="row : ${cycleBOnlyRows}">
+                    <td th:text="${row.date}"></td>
+                    <td th:text="${row.description}"></td>
+                    <td th:text="${row.cardRef}"></td>
+                    <td th:text="${row.category}"></td>
+                    <td th:text="${'$' + row.amountDollars}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 </div>
 
+<script>
+    function showCycleMetric(cycle, metric, clickedButton) {
+        document.getElementById(cycle + "-total").classList.add("hidden");
+        document.getElementById(cycle + "-only").classList.add("hidden");
+
+        document.getElementById(cycle + "-" + metric).classList.remove("hidden");
+
+        const buttonGroup = clickedButton.parentElement;
+        buttonGroup.querySelectorAll("button").forEach(button => {
+            button.classList.remove("active");
+        });
+
+        clickedButton.classList.add("active");
+    }
+
+    function showCycleOnlyTable(tableName, clickedButton) {
+        document.getElementById("cycleAOnly-table").classList.add("hidden");
+        document.getElementById("cycleBOnly-table").classList.add("hidden");
+
+        document.getElementById(tableName + "-table").classList.remove("hidden");
+
+        const buttonGroup = clickedButton.parentElement;
+        buttonGroup.querySelectorAll("button").forEach(button => {
+            button.classList.remove("active");
+        });
+
+        clickedButton.classList.add("active");
+    }
+</script>
 </body>
 </html>

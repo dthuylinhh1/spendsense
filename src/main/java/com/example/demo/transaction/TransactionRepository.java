@@ -11,6 +11,8 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
 
     List<TransactionEntity> findAllByOrderByPostedDateDescIdDesc();
 
+    List<TransactionEntity> findByStatementImport_Id(Long statementImportId);
+
     List<TransactionEntity> findByCardRefOrderByPostedDateDescIdDesc(String cardRef);
 
     List<TransactionEntity> findByPostedDateBetweenOrderByPostedDateDescIdDesc(

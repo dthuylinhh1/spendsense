@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.Objects;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -69,6 +70,32 @@ public class TransactionCompareController {
             List<CategoryComparisonRow> categoryComparisonRows =
                     buildCategoryComparison(cycleAId, cycleBId);
 
+            List<RecurringTransactionRow> recurringTransactionRows =
+                    buildRecurringTransactions(cycleAId, cycleBId);
+
+            Long recurringTotalCents = recurringTransactionRows.stream()
+                .mapToLong(RecurringTransactionRow::getAmountCents)
+                .sum();
+
+            BigDecimal recurringTotalDollars = centsToDollars(recurringTotalCents);
+
+            List<CycleOnlyTransactionRow> cycleAOnlyRows =
+                buildCycleOnlyTransactions(cycleAId, cycleBId);
+
+            List<CycleOnlyTransactionRow> cycleBOnlyRows =
+                buildCycleOnlyTransactions(cycleBId, cycleAId);
+
+            Long cycleAOnlyTotalCents = cycleAOnlyRows.stream()
+                .mapToLong(CycleOnlyTransactionRow::getAmountCents)
+                .sum();
+
+            Long cycleBOnlyTotalCents = cycleBOnlyRows.stream()
+                .mapToLong(CycleOnlyTransactionRow::getAmountCents)
+                .sum();
+
+            BigDecimal cycleAOnlyTotalDollars = centsToDollars(cycleAOnlyTotalCents);
+            BigDecimal cycleBOnlyTotalDollars = centsToDollars(cycleBOnlyTotalCents);
+
             model.addAttribute("hasComparison", true);
             model.addAttribute("cycleA", cycleA);
             model.addAttribute("cycleB", cycleB);
@@ -76,6 +103,13 @@ public class TransactionCompareController {
             model.addAttribute("cycleBTotalDollars", cycleBTotalDollars);
             model.addAttribute("differenceDollars", differenceDollars);
             model.addAttribute("categoryComparisonRows", categoryComparisonRows);
+            model.addAttribute("recurringTransactionRows", recurringTransactionRows);
+            model.addAttribute("recurringTotalDollars", recurringTotalDollars);
+            model.addAttribute("cycleAOnlyRows", cycleAOnlyRows);
+            model.addAttribute("cycleBOnlyRows", cycleBOnlyRows);
+            model.addAttribute("cycleAOnlyTotalDollars", cycleAOnlyTotalDollars);
+            model.addAttribute("cycleBOnlyTotalDollars", cycleBOnlyTotalDollars);
+
         } else {
             model.addAttribute("hasComparison", false);
         }
@@ -125,6 +159,107 @@ public class TransactionCompareController {
 
         return map;
     }
+
+    private List<RecurringTransactionRow> buildRecurringTransactions(Long cycleAId, Long cycleBId) {
+        List<TransactionEntity> cycleATransactions =
+                transactionRepository.findByStatementImport_Id(cycleAId);
+
+        List<TransactionEntity> cycleBTransactions =
+                transactionRepository.findByStatementImport_Id(cycleBId);
+
+        Set<String> cycleBKeys = new LinkedHashSet<>();
+
+        for (TransactionEntity transaction : cycleBTransactions) {
+                cycleBKeys.add(buildRecurringKey(transaction));
+        }
+
+        List<RecurringTransactionRow> rows = new ArrayList<>();
+        Set<String> alreadyAdded = new LinkedHashSet<>();
+
+        for (TransactionEntity transaction : cycleATransactions) {
+                String key = buildRecurringKey(transaction);
+
+                if (cycleBKeys.contains(key) && !alreadyAdded.contains(key)) {
+                rows.add(new RecurringTransactionRow(
+                        transaction.getDescription(),
+                        transaction.getCardRef(),
+                        transaction.getAmountCents(),
+                        transaction.getBankCategory() == null
+                                ? "Uncategorized"
+                                : transaction.getBankCategory()
+                ));
+
+                alreadyAdded.add(key);
+                }
+        }
+
+        rows.sort((a, b) -> Long.compare(
+                Math.abs(b.getAmountCents()),
+                Math.abs(a.getAmountCents())
+        ));
+
+        return rows;
+        }
+
+        private String buildRecurringKey(TransactionEntity transaction) {
+        String description = normalizeText(transaction.getDescription());
+        String cardRef = normalizeText(transaction.getCardRef());
+        Long amountCents = transaction.getAmountCents();
+
+        return description + "|" + cardRef + "|" + amountCents;
+        }
+
+        private String normalizeText(String value) {
+        if (value == null) {
+                return "";
+        }
+
+        return value.trim().toLowerCase();
+        }
+
+        private List<CycleOnlyTransactionRow> buildCycleOnlyTransactions(
+                Long targetCycleId,
+                Long comparisonCycleId
+        ) {
+                List<TransactionEntity> targetTransactions =
+                        transactionRepository.findByStatementImport_Id(targetCycleId);
+
+                List<TransactionEntity> comparisonTransactions =
+                        transactionRepository.findByStatementImport_Id(comparisonCycleId);
+
+                Set<String> comparisonKeys = new LinkedHashSet<>();
+
+                for (TransactionEntity transaction : comparisonTransactions) {
+                        comparisonKeys.add(buildRecurringKey(transaction));
+                }
+
+                List<CycleOnlyTransactionRow> rows = new ArrayList<>();
+
+                for (TransactionEntity transaction : targetTransactions) {
+                        String key = buildRecurringKey(transaction);
+
+                        if (!comparisonKeys.contains(key)) {
+                        rows.add(new CycleOnlyTransactionRow(
+                                transaction.getPostedDate() == null
+                                        ? ""
+                                        : transaction.getPostedDate().toString(),
+                                transaction.getDescription(),
+                                transaction.getCardRef(),
+                                transaction.getBankCategory() == null
+                                        ? "Uncategorized"
+                                        : transaction.getBankCategory(),
+                                transaction.getAmountCents()
+                        ));
+                        }
+                }
+
+                rows.sort((a, b) -> Long.compare(
+                        Math.abs(b.getAmountCents()),
+                        Math.abs(a.getAmountCents())
+                ));
+
+                return rows;
+        }
 
     private BigDecimal centsToDollars(Long cents) {
         return BigDecimal.valueOf(cents)
