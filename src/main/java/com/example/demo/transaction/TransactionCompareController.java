@@ -8,7 +8,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.Objects;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -96,19 +95,59 @@ public class TransactionCompareController {
             BigDecimal cycleAOnlyTotalDollars = centsToDollars(cycleAOnlyTotalCents);
             BigDecimal cycleBOnlyTotalDollars = centsToDollars(cycleBOnlyTotalCents);
 
+            String higherCycleText;
+
+                if (differenceDollars.compareTo(BigDecimal.ZERO) > 0) {
+                higherCycleText = "Cycle B is higher than Cycle A by $" + formatMoney(differenceDollars.abs());
+                } else if (differenceDollars.compareTo(BigDecimal.ZERO) < 0) {
+                higherCycleText = "Cycle A is higher than Cycle B by $" + formatMoney(differenceDollars.abs());
+                } else {
+                higherCycleText = "Cycle A and Cycle B have the same total spending.";
+                }
+
+                String biggestCategoryChangeText = "No category change found.";
+
+                if (!categoryComparisonRows.isEmpty()) {
+                CategoryComparisonRow biggestChange = categoryComparisonRows.get(0);
+
+                if (biggestChange.getDifferenceCents() > 0) {
+                        biggestCategoryChangeText =
+                                "Biggest category change: "
+                                        + biggestChange.getCategory()
+                                        + " increased by $"
+                                        + formatMoney(centsToDollars(Math.abs(biggestChange.getDifferenceCents())))
+                                        + ".";
+                } else if (biggestChange.getDifferenceCents() < 0) {
+                        biggestCategoryChangeText =
+                                "Biggest category change: "
+                                        + biggestChange.getCategory()
+                                        + " decreased by $"
+                                        + formatMoney(centsToDollars(Math.abs(biggestChange.getDifferenceCents())))
+                                        + ".";
+                } else {
+                        biggestCategoryChangeText =
+                                "Biggest category change: "
+                                        + biggestChange.getCategory()
+                                        + " had no change.";
+                }
+                }
+
+            model.addAttribute("higherCycleText", higherCycleText);
+            model.addAttribute("biggestCategoryChangeText", biggestCategoryChangeText);
+
             model.addAttribute("hasComparison", true);
             model.addAttribute("cycleA", cycleA);
             model.addAttribute("cycleB", cycleB);
-            model.addAttribute("cycleATotalDollars", cycleATotalDollars);
-            model.addAttribute("cycleBTotalDollars", cycleBTotalDollars);
-            model.addAttribute("differenceDollars", differenceDollars);
+            model.addAttribute("cycleATotalDollars", formatMoney(cycleATotalDollars));
+            model.addAttribute("cycleBTotalDollars", formatMoney(cycleBTotalDollars));
+            model.addAttribute("differenceDollars", formatMoney(differenceDollars));
             model.addAttribute("categoryComparisonRows", categoryComparisonRows);
             model.addAttribute("recurringTransactionRows", recurringTransactionRows);
-            model.addAttribute("recurringTotalDollars", recurringTotalDollars);
+            model.addAttribute("recurringTotalDollars", formatMoney(recurringTotalDollars));
             model.addAttribute("cycleAOnlyRows", cycleAOnlyRows);
             model.addAttribute("cycleBOnlyRows", cycleBOnlyRows);
-            model.addAttribute("cycleAOnlyTotalDollars", cycleAOnlyTotalDollars);
-            model.addAttribute("cycleBOnlyTotalDollars", cycleBOnlyTotalDollars);
+            model.addAttribute("cycleAOnlyTotalDollars", formatMoney(cycleAOnlyTotalDollars));
+            model.addAttribute("cycleBOnlyTotalDollars", formatMoney(cycleBOnlyTotalDollars));
 
         } else {
             model.addAttribute("hasComparison", false);
@@ -259,6 +298,14 @@ public class TransactionCompareController {
                 ));
 
                 return rows;
+        }
+
+        private String formatMoney(BigDecimal amount) {
+                if (amount == null) {
+                        return "0.00";
+                }
+
+                return String.format("%,.2f", amount);
         }
 
     private BigDecimal centsToDollars(Long cents) {
