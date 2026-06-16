@@ -65,6 +65,8 @@ public class TransactionCompareController {
             BigDecimal cycleATotalDollars = centsToDollars(cycleATotalCents);
             BigDecimal cycleBTotalDollars = centsToDollars(cycleBTotalCents);
             BigDecimal differenceDollars = centsToDollars(cycleBTotalCents - cycleATotalCents);
+            Long differenceCentsRaw = cycleBTotalCents - cycleATotalCents;
+            String differenceDisplay = formatMoney(differenceDollars.abs());
 
             List<CategoryComparisonRow> categoryComparisonRows =
                     buildCategoryComparison(cycleAId, cycleBId);
@@ -134,6 +136,9 @@ public class TransactionCompareController {
 
             model.addAttribute("higherCycleText", higherCycleText);
             model.addAttribute("biggestCategoryChangeText", biggestCategoryChangeText);
+
+            model.addAttribute("differenceCentsRaw", differenceCentsRaw);
+            model.addAttribute("differenceDisplay", differenceDisplay);
 
             model.addAttribute("hasComparison", true);
             model.addAttribute("cycleA", cycleA);

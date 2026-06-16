@@ -259,6 +259,80 @@
             color: #111827;
         }
 
+        .amount-increase {
+            color: #b91c1c;
+            font-weight: 700;
+        }
+
+        .amount-decrease {
+            color: #047857;
+            font-weight: 700;
+        }
+
+        .amount-neutral {
+            color: #374151;
+            font-weight: 700;
+        }
+
+        .amount-increase {
+            color: #b91c1c;
+            font-weight: 700;
+        }
+
+        .amount-decrease {
+            color: #047857;
+            font-weight: 700;
+        }
+
+        .amount-neutral {
+            color: #6b7280;
+            font-weight: 700;
+        }
+
+        .diff-arrow {
+            display: inline-block;
+            width: 14px;
+            margin-right: 6px;
+            font-size: 12px;
+        }
+
+        .category-legend {
+            margin: -6px 0 12px 0;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .summary-trend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .summary-trend .summary-value {
+            margin-bottom: 0;
+        }
+
+        .summary-arrow {
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .summary-arrow.increase,
+        .summary-value.increase {
+            color: #b91c1c;
+        }
+
+        .summary-arrow.decrease,
+        .summary-value.decrease {
+            color: #047857;
+        }
+
+        .summary-arrow.neutral,
+        .summary-value.neutral {
+            color: #6b7280;
+        }
+
         .hidden {
             display: none;
         }
@@ -327,7 +401,7 @@
                             Total
                         </button>
                         <button type="button" class="toggle-button" onclick="showCycleMetric('cycleA', 'only', this)">
-                            Without Fixed
+                            One-time / Cycle Only
                         </button>
                     </div>
                 </div>
@@ -350,7 +424,7 @@
                             Total
                         </button>
                         <button type="button" class="toggle-button" onclick="showCycleMetric('cycleB', 'only', this)">
-                            Without Fixed
+                            One-time / Cycle Only
                         </button>
                     </div>
                 </div>
@@ -361,7 +435,23 @@
 
             <div class="summary-card">
                 <div class="summary-label">Difference</div>
-                <div class="summary-value" th:text="${'$' + differenceDollars}">$0.00</div>
+
+                <div class="summary-trend">
+                    <span
+                        class="summary-arrow"
+                        th:classappend="${differenceCentsRaw > 0} ? 'increase' : (${differenceCentsRaw < 0} ? 'decrease' : 'neutral')"
+                        th:text="${differenceCentsRaw > 0} ? '▲' : (${differenceCentsRaw < 0} ? '▼' : '•')">
+                        ▲
+                    </span>
+
+                    <div
+                        class="summary-value"
+                        th:classappend="${differenceCentsRaw > 0} ? 'increase' : (${differenceCentsRaw < 0} ? 'decrease' : 'neutral')"
+                        th:text="${'$' + differenceDisplay}">
+                        $0.00
+                    </div>
+                </div>
+
                 <div class="summary-note">Cycle B minus Cycle A</div>
             </div>
 
@@ -398,7 +488,11 @@
         </section>
 
         <h2>Category Changes</h2>
-
+        <p class="category-legend">
+            <span class="amount-increase">▲ Increase in spending</span>
+            &nbsp;•&nbsp;
+            <span class="amount-decrease">▼ Decrease in spending</span>
+        </p>
         <table>
             <thead>
             <tr>
@@ -413,7 +507,16 @@
                 <td th:text="${row.category}"></td>
                 <td th:text="${#numbers.formatCurrency(row.cycleADollars)}"></td>
                 <td th:text="${#numbers.formatCurrency(row.cycleBDollars)}"></td>
-                <td th:text="${#numbers.formatCurrency(row.differenceDollars)}"></td>
+                <td
+                    th:classappend="${row.differenceCents > 0} ? 'amount-increase' : (${row.differenceCents < 0} ? 'amount-decrease' : 'amount-neutral')">
+
+                    <span class="diff-arrow"
+                        th:text="${row.differenceCents > 0} ? '▲' : (${row.differenceCents < 0} ? '▼' : '•')">
+                        ▲
+                    </span>
+
+                    <span th:text="${#numbers.formatCurrency(row.differenceDollars)}">$0.00</span>
+                </td>
             </tr>
             </tbody>
         </table>
