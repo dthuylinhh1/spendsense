@@ -22,13 +22,16 @@ public class TransactionCompareController {
 
     private final TransactionRepository transactionRepository;
     private final StatementImportRepository statementImportRepository;
+    private final ComparisonInsightService comparisonInsightService;
 
     public TransactionCompareController(
             TransactionRepository transactionRepository,
-            StatementImportRepository statementImportRepository
+            StatementImportRepository statementImportRepository,
+            ComparisonInsightService comparisonInsightService
     ) {
         this.transactionRepository = transactionRepository;
         this.statementImportRepository = statementImportRepository;
+        this.comparisonInsightService = comparisonInsightService;
     }
 
     @GetMapping("/transactions/compare")
@@ -62,10 +65,11 @@ public class TransactionCompareController {
             Long cycleBTotalCents = transactionRepository
                     .getTotalSpendingCentsByStatementImport(cycleBId);
 
+            Long differenceCentsRaw = cycleBTotalCents - cycleATotalCents;
+
             BigDecimal cycleATotalDollars = centsToDollars(cycleATotalCents);
             BigDecimal cycleBTotalDollars = centsToDollars(cycleBTotalCents);
-            BigDecimal differenceDollars = centsToDollars(cycleBTotalCents - cycleATotalCents);
-            Long differenceCentsRaw = cycleBTotalCents - cycleATotalCents;
+            BigDecimal differenceDollars = centsToDollars(differenceCentsRaw);
             String differenceDisplay = formatMoney(differenceDollars.abs());
 
             List<CategoryComparisonRow> categoryComparisonRows =
@@ -75,85 +79,57 @@ public class TransactionCompareController {
                     buildRecurringTransactions(cycleAId, cycleBId);
 
             Long recurringTotalCents = recurringTransactionRows.stream()
-                .mapToLong(RecurringTransactionRow::getAmountCents)
-                .sum();
+                    .mapToLong(RecurringTransactionRow::getAmountCents)
+                    .sum();
 
             BigDecimal recurringTotalDollars = centsToDollars(recurringTotalCents);
 
             List<CycleOnlyTransactionRow> cycleAOnlyRows =
-                buildCycleOnlyTransactions(cycleAId, cycleBId);
+                    buildCycleOnlyTransactions(cycleAId, cycleBId);
 
             List<CycleOnlyTransactionRow> cycleBOnlyRows =
-                buildCycleOnlyTransactions(cycleBId, cycleAId);
+                    buildCycleOnlyTransactions(cycleBId, cycleAId);
 
             Long cycleAOnlyTotalCents = cycleAOnlyRows.stream()
-                .mapToLong(CycleOnlyTransactionRow::getAmountCents)
-                .sum();
+                    .mapToLong(CycleOnlyTransactionRow::getAmountCents)
+                    .sum();
 
             Long cycleBOnlyTotalCents = cycleBOnlyRows.stream()
-                .mapToLong(CycleOnlyTransactionRow::getAmountCents)
-                .sum();
+                    .mapToLong(CycleOnlyTransactionRow::getAmountCents)
+                    .sum();
 
             BigDecimal cycleAOnlyTotalDollars = centsToDollars(cycleAOnlyTotalCents);
             BigDecimal cycleBOnlyTotalDollars = centsToDollars(cycleBOnlyTotalCents);
 
-            String higherCycleText;
+            String higherCycleText =
+                    comparisonInsightService.buildHigherCycleText(differenceDollars);
 
-                if (differenceDollars.compareTo(BigDecimal.ZERO) > 0) {
-                higherCycleText = "Cycle B is higher than Cycle A by $" + formatMoney(differenceDollars.abs());
-                } else if (differenceDollars.compareTo(BigDecimal.ZERO) < 0) {
-                higherCycleText = "Cycle A is higher than Cycle B by $" + formatMoney(differenceDollars.abs());
-                } else {
-                higherCycleText = "Cycle A and Cycle B have the same total spending.";
-                }
-
-                String biggestCategoryChangeText = "No category change found.";
-
-                if (!categoryComparisonRows.isEmpty()) {
-                CategoryComparisonRow biggestChange = categoryComparisonRows.get(0);
-
-                if (biggestChange.getDifferenceCents() > 0) {
-                        biggestCategoryChangeText =
-                                "Biggest category change: "
-                                        + biggestChange.getCategory()
-                                        + " increased by $"
-                                        + formatMoney(centsToDollars(Math.abs(biggestChange.getDifferenceCents())))
-                                        + ".";
-                } else if (biggestChange.getDifferenceCents() < 0) {
-                        biggestCategoryChangeText =
-                                "Biggest category change: "
-                                        + biggestChange.getCategory()
-                                        + " decreased by $"
-                                        + formatMoney(centsToDollars(Math.abs(biggestChange.getDifferenceCents())))
-                                        + ".";
-                } else {
-                        biggestCategoryChangeText =
-                                "Biggest category change: "
-                                        + biggestChange.getCategory()
-                                        + " had no change.";
-                }
-                }
-
-            model.addAttribute("higherCycleText", higherCycleText);
-            model.addAttribute("biggestCategoryChangeText", biggestCategoryChangeText);
-
-            model.addAttribute("differenceCentsRaw", differenceCentsRaw);
-            model.addAttribute("differenceDisplay", differenceDisplay);
+            String biggestCategoryChangeText =
+                    comparisonInsightService.buildBiggestCategoryChangeText(categoryComparisonRows);
 
             model.addAttribute("hasComparison", true);
+
             model.addAttribute("cycleA", cycleA);
             model.addAttribute("cycleB", cycleB);
+
             model.addAttribute("cycleATotalDollars", formatMoney(cycleATotalDollars));
             model.addAttribute("cycleBTotalDollars", formatMoney(cycleBTotalDollars));
             model.addAttribute("differenceDollars", formatMoney(differenceDollars));
+            model.addAttribute("differenceDisplay", differenceDisplay);
+            model.addAttribute("differenceCentsRaw", differenceCentsRaw);
+
             model.addAttribute("categoryComparisonRows", categoryComparisonRows);
+
             model.addAttribute("recurringTransactionRows", recurringTransactionRows);
             model.addAttribute("recurringTotalDollars", formatMoney(recurringTotalDollars));
+
             model.addAttribute("cycleAOnlyRows", cycleAOnlyRows);
             model.addAttribute("cycleBOnlyRows", cycleBOnlyRows);
             model.addAttribute("cycleAOnlyTotalDollars", formatMoney(cycleAOnlyTotalDollars));
             model.addAttribute("cycleBOnlyTotalDollars", formatMoney(cycleBOnlyTotalDollars));
 
+            model.addAttribute("higherCycleText", higherCycleText);
+            model.addAttribute("biggestCategoryChangeText", biggestCategoryChangeText);
         } else {
             model.addAttribute("hasComparison", false);
         }
@@ -214,16 +190,16 @@ public class TransactionCompareController {
         Set<String> cycleBKeys = new LinkedHashSet<>();
 
         for (TransactionEntity transaction : cycleBTransactions) {
-                cycleBKeys.add(buildRecurringKey(transaction));
+            cycleBKeys.add(buildRecurringKey(transaction));
         }
 
         List<RecurringTransactionRow> rows = new ArrayList<>();
         Set<String> alreadyAdded = new LinkedHashSet<>();
 
         for (TransactionEntity transaction : cycleATransactions) {
-                String key = buildRecurringKey(transaction);
+            String key = buildRecurringKey(transaction);
 
-                if (cycleBKeys.contains(key) && !alreadyAdded.contains(key)) {
+            if (cycleBKeys.contains(key) && !alreadyAdded.contains(key)) {
                 rows.add(new RecurringTransactionRow(
                         transaction.getDescription(),
                         transaction.getCardRef(),
@@ -234,7 +210,7 @@ public class TransactionCompareController {
                 ));
 
                 alreadyAdded.add(key);
-                }
+            }
         }
 
         rows.sort((a, b) -> Long.compare(
@@ -243,77 +219,81 @@ public class TransactionCompareController {
         ));
 
         return rows;
+    }
+
+    private List<CycleOnlyTransactionRow> buildCycleOnlyTransactions(
+            Long targetCycleId,
+            Long comparisonCycleId
+    ) {
+        List<TransactionEntity> targetTransactions =
+                transactionRepository.findByStatementImport_Id(targetCycleId);
+
+        List<TransactionEntity> comparisonTransactions =
+                transactionRepository.findByStatementImport_Id(comparisonCycleId);
+
+        Set<String> comparisonKeys = new LinkedHashSet<>();
+
+        for (TransactionEntity transaction : comparisonTransactions) {
+            comparisonKeys.add(buildRecurringKey(transaction));
         }
 
-        private String buildRecurringKey(TransactionEntity transaction) {
+        List<CycleOnlyTransactionRow> rows = new ArrayList<>();
+
+        for (TransactionEntity transaction : targetTransactions) {
+            String key = buildRecurringKey(transaction);
+
+            if (!comparisonKeys.contains(key)) {
+                rows.add(new CycleOnlyTransactionRow(
+                        transaction.getPostedDate() == null
+                                ? ""
+                                : transaction.getPostedDate().toString(),
+                        transaction.getDescription(),
+                        transaction.getCardRef(),
+                        transaction.getBankCategory() == null
+                                ? "Uncategorized"
+                                : transaction.getBankCategory(),
+                        transaction.getAmountCents()
+                ));
+            }
+        }
+
+        rows.sort((a, b) -> Long.compare(
+                Math.abs(b.getAmountCents()),
+                Math.abs(a.getAmountCents())
+        ));
+
+        return rows;
+    }
+
+    private String buildRecurringKey(TransactionEntity transaction) {
         String description = normalizeText(transaction.getDescription());
         String cardRef = normalizeText(transaction.getCardRef());
         Long amountCents = transaction.getAmountCents();
 
         return description + "|" + cardRef + "|" + amountCents;
-        }
+    }
 
-        private String normalizeText(String value) {
+    private String normalizeText(String value) {
         if (value == null) {
-                return "";
+            return "";
         }
 
         return value.trim().toLowerCase();
+    }
+
+    private String formatMoney(BigDecimal amount) {
+        if (amount == null) {
+            return "0.00";
         }
 
-        private List<CycleOnlyTransactionRow> buildCycleOnlyTransactions(
-                Long targetCycleId,
-                Long comparisonCycleId
-        ) {
-                List<TransactionEntity> targetTransactions =
-                        transactionRepository.findByStatementImport_Id(targetCycleId);
-
-                List<TransactionEntity> comparisonTransactions =
-                        transactionRepository.findByStatementImport_Id(comparisonCycleId);
-
-                Set<String> comparisonKeys = new LinkedHashSet<>();
-
-                for (TransactionEntity transaction : comparisonTransactions) {
-                        comparisonKeys.add(buildRecurringKey(transaction));
-                }
-
-                List<CycleOnlyTransactionRow> rows = new ArrayList<>();
-
-                for (TransactionEntity transaction : targetTransactions) {
-                        String key = buildRecurringKey(transaction);
-
-                        if (!comparisonKeys.contains(key)) {
-                        rows.add(new CycleOnlyTransactionRow(
-                                transaction.getPostedDate() == null
-                                        ? ""
-                                        : transaction.getPostedDate().toString(),
-                                transaction.getDescription(),
-                                transaction.getCardRef(),
-                                transaction.getBankCategory() == null
-                                        ? "Uncategorized"
-                                        : transaction.getBankCategory(),
-                                transaction.getAmountCents()
-                        ));
-                        }
-                }
-
-                rows.sort((a, b) -> Long.compare(
-                        Math.abs(b.getAmountCents()),
-                        Math.abs(a.getAmountCents())
-                ));
-
-                return rows;
-        }
-
-        private String formatMoney(BigDecimal amount) {
-                if (amount == null) {
-                        return "0.00";
-                }
-
-                return String.format("%,.2f", amount);
-        }
+        return String.format("%,.2f", amount.setScale(2, RoundingMode.HALF_UP));
+    }
 
     private BigDecimal centsToDollars(Long cents) {
+        if (cents == null) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
         return BigDecimal.valueOf(cents)
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
