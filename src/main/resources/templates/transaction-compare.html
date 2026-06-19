@@ -259,6 +259,44 @@
             color: #111827;
         }
 
+        .ai-insight-section {
+            background: #ffffff;
+            border: 1px solid #bfdbfe;
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin: 0 0 32px 0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+
+        .ai-insight-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .ai-insight-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .ai-insight-text {
+            white-space: pre-line;
+            line-height: 1.6;
+            color: #374151;
+            margin: 12px 0 0 0;
+        }
+
+        .ai-insight-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
         .amount-increase {
             color: #b91c1c;
             font-weight: 700;
@@ -485,6 +523,29 @@
                     in cycle-only spending.
                 </li>
             </ul>
+        </section>
+
+        <section class="ai-insight-section">
+            <div class="ai-insight-header">
+                <div>
+                    <h2>AI Cycle Insight</h2>
+                </div>
+
+                <form method="get" action="/transactions/compare">
+                    <input type="hidden" name="cycleAId" th:value="${selectedCycleAId}">
+                    <input type="hidden" name="cycleBId" th:value="${selectedCycleBId}">
+                    <input type="hidden" name="generateAiInsight" value="true">
+                    <button type="submit" class="primary-button">Generate AI Insight</button>
+                </form>
+            </div>
+
+            <p class="section-subtitle" th:if="${!aiInsightRequested}">
+                Use AI to summarize the biggest changes, recurring charges, and one-time spending.
+            </p>
+
+            <p class="ai-insight-text" th:if="${aiInsight}" th:text="${aiInsight}"></p>
+
+            <div class="ai-insight-error" th:if="${aiInsightError}" th:text="${aiInsightError}"></div>
         </section>
 
         <h2>Category Changes</h2>

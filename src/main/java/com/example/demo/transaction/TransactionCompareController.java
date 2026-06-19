@@ -23,21 +23,25 @@ public class TransactionCompareController {
     private final TransactionRepository transactionRepository;
     private final StatementImportRepository statementImportRepository;
     private final ComparisonInsightService comparisonInsightService;
+    private final AiCycleInsightService aiCycleInsightService;
 
     public TransactionCompareController(
             TransactionRepository transactionRepository,
             StatementImportRepository statementImportRepository,
-            ComparisonInsightService comparisonInsightService
+            ComparisonInsightService comparisonInsightService,
+            AiCycleInsightService aiCycleInsightService
     ) {
         this.transactionRepository = transactionRepository;
         this.statementImportRepository = statementImportRepository;
         this.comparisonInsightService = comparisonInsightService;
+        this.aiCycleInsightService = aiCycleInsightService;
     }
 
     @GetMapping("/transactions/compare")
     public String compareTransactions(
             @RequestParam(required = false) Long cycleAId,
             @RequestParam(required = false) Long cycleBId,
+            @RequestParam(required = false, defaultValue = "false") boolean generateAiInsight,
             Model model
     ) {
         var statementImports = statementImportRepository.findAllByOrderByUploadedAtDesc();
@@ -47,6 +51,7 @@ public class TransactionCompareController {
         model.addAttribute("statementImports", statementImports);
         model.addAttribute("selectedCycleAId", cycleAId);
         model.addAttribute("selectedCycleBId", cycleBId);
+        model.addAttribute("aiInsightRequested", generateAiInsight);
 
         boolean hasBothCycles = cycleAId != null && cycleBId != null;
 
@@ -130,6 +135,31 @@ public class TransactionCompareController {
 
             model.addAttribute("higherCycleText", higherCycleText);
             model.addAttribute("biggestCategoryChangeText", biggestCategoryChangeText);
+
+            if (generateAiInsight) {
+                try {
+                    String aiInsight = aiCycleInsightService.generateInsight(
+                            cycleAId,
+                            cycleBId,
+                            cycleATotalDollars,
+                            cycleBTotalDollars,
+                            differenceDollars,
+                            recurringTotalDollars,
+                            cycleAOnlyTotalDollars,
+                            cycleBOnlyTotalDollars,
+                            categoryComparisonRows,
+                            recurringTransactionRows,
+                            cycleAOnlyRows,
+                            cycleBOnlyRows
+                    );
+                    model.addAttribute("aiInsight", aiInsight);
+                } catch (Exception e) {
+                    model.addAttribute(
+                            "aiInsightError",
+                            "AI insight could not be generated right now: " + e.getMessage()
+                    );
+                }
+            }
         } else {
             model.addAttribute("hasComparison", false);
         }
