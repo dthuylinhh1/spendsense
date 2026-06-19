@@ -112,6 +112,23 @@ public class TransactionCompareController {
             String biggestCategoryChangeText =
                     comparisonInsightService.buildBiggestCategoryChangeText(categoryComparisonRows);
 
+            AiCycleInsightService.AiCycleInsightCostEstimate aiInsightCostEstimate =
+                    aiCycleInsightService.estimateCost(
+                            cycleATotalDollars,
+                            cycleBTotalDollars,
+                            differenceDollars,
+                            recurringTotalDollars,
+                            cycleAOnlyTotalDollars,
+                            cycleBOnlyTotalDollars,
+                            categoryComparisonRows,
+                            recurringTransactionRows,
+                            cycleAOnlyRows,
+                            cycleBOnlyRows
+                    );
+
+            boolean hasSavedAiInsight =
+                    aiCycleInsightService.hasSavedInsight(cycleAId, cycleBId);
+
             model.addAttribute("hasComparison", true);
 
             model.addAttribute("cycleA", cycleA);
@@ -135,6 +152,11 @@ public class TransactionCompareController {
 
             model.addAttribute("higherCycleText", higherCycleText);
             model.addAttribute("biggestCategoryChangeText", biggestCategoryChangeText);
+            model.addAttribute("aiInsightModel", aiInsightCostEstimate.model());
+            model.addAttribute("aiInsightEstimatedInputTokens", aiInsightCostEstimate.estimatedInputTokens());
+            model.addAttribute("aiInsightEstimatedOutputTokens", aiInsightCostEstimate.estimatedOutputTokens());
+            model.addAttribute("aiInsightEstimatedCostUsd", aiInsightCostEstimate.estimatedCostUsd());
+            model.addAttribute("hasSavedAiInsight", hasSavedAiInsight);
 
             if (generateAiInsight) {
                 try {
@@ -153,6 +175,7 @@ public class TransactionCompareController {
                             cycleBOnlyRows
                     );
                     model.addAttribute("aiInsight", aiInsight);
+                    model.addAttribute("hasSavedAiInsight", true);
                 } catch (Exception e) {
                     model.addAttribute(
                             "aiInsightError",

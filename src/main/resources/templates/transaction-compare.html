@@ -288,6 +288,30 @@
             margin: 12px 0 0 0;
         }
 
+        .ai-insight-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .ai-insight-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1e3a8a;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .ai-insight-pill.saved {
+            background: #ecfdf5;
+            color: #065f46;
+        }
+
         .ai-insight-error {
             background: #fef2f2;
             border: 1px solid #fecaca;
@@ -542,6 +566,21 @@
             <p class="section-subtitle" th:if="${!aiInsightRequested}">
                 Use AI to summarize the biggest changes, recurring charges, and one-time spending.
             </p>
+
+            <div class="ai-insight-meta">
+                <span class="ai-insight-pill" th:text="${'Model: ' + aiInsightModel}">Model: gpt-5.4-mini</span>
+                <span class="ai-insight-pill"
+                      th:text="${'Estimate: $' + #numbers.formatDecimal(aiInsightEstimatedCostUsd, 1, 6)}">
+                    Estimate: $0.000000
+                </span>
+                <span class="ai-insight-pill"
+                      th:text="${aiInsightEstimatedInputTokens + ' input tokens + ' + aiInsightEstimatedOutputTokens + ' output tokens'}">
+                    0 input tokens + 0 output tokens
+                </span>
+                <span class="ai-insight-pill saved" th:if="${hasSavedAiInsight}">
+                    Saved summary will be reused
+                </span>
+            </div>
 
             <p class="ai-insight-text" th:if="${aiInsight}" th:text="${aiInsight}"></p>
 
