@@ -1,21 +1,24 @@
 package com.example.demo.importer;
 
+import com.example.demo.entity.StatementImportEntity;
+import com.example.demo.repository.StatementImportRepository;
 import com.example.demo.transaction.TransactionEntity;
 import com.example.demo.transaction.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.demo.entity.StatementImportEntity;
-import com.example.demo.repository.StatementImportRepository;
-import java.time.LocalDateTime;
-
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class CibcPdfImportService {
@@ -26,10 +29,10 @@ public class CibcPdfImportService {
   public CibcPdfImportService(
       TransactionRepository repo,
       StatementImportRepository statementImportRepository
-  ){
+  ) {
     this.repo = repo;
     this.statementImportRepository = statementImportRepository;
-  }   
+  }
 
   // Normal one-line row:
   // Nov 25 Nov 26 Columbia Sportswear CA London ON Retail and Grocery 119.03
@@ -71,44 +74,97 @@ public class CibcPdfImportService {
   public record ImportResult(int rowsInserted, int rowsSkipped) {}
 
   public ImportResult importStatement(MultipartFile file) throws Exception {
-    byte[] fileBytes = file.getBytes();
-    String fileHash = sha256Bytes(fileBytes);
+    Path tempPdf = Files.createTempFile("spendsense-", ".pdf");
 
-    if (statementImportRepository.findByFileHash(fileHash).isPresent()) {
-      return new ImportResult(0, 0);
+    try {
+      file.transferTo(tempPdf);
+
+      String fileHash = sha256File(tempPdf);
+      if (statementImportRepository.findByFileHash(fileHash).isPresent()) {
+        return new ImportResult(0, 0);
+      }
+
+      String text = PdfTextExtractor.extractAllText(tempPdf.toFile());
+      List<String> rawLines = Arrays.asList(text.split("\\R"));
+
+      int statementYear = guessStatementYear(text);
+      LocalDate statementStartDate = guessStatementStartDate(text);
+      LocalDate statementEndDate = guessStatementEndDate(text);
+
+      List<ParsedRow> parsedRows = parseRows(rawLines, statementYear);
+
+      List<String> hashes = new ArrayList<>(parsedRows.size());
+      for (ParsedRow row : parsedRows) {
+        row.importHash = buildImportHash(row);
+        hashes.add(row.importHash);
+      }
+
+      Set<String> existingHashes = hashes.isEmpty()
+          ? Set.of()
+          : repo.findByImportHashIn(hashes).stream()
+              .map(TransactionEntity::getImportHash)
+              .collect(Collectors.toSet());
+
+      StatementImportEntity statementImport = new StatementImportEntity();
+      statementImport.setFilename(file.getOriginalFilename());
+      statementImport.setSource("CIBC");
+      statementImport.setStatementStartDate(statementStartDate);
+      statementImport.setStatementEndDate(statementEndDate);
+      statementImport.setUploadedAt(LocalDateTime.now());
+      statementImport.setRowsInserted(0);
+      statementImport.setRowsSkipped(0);
+      statementImport.setFileHash(fileHash);
+      statementImport = statementImportRepository.save(statementImport);
+
+      List<TransactionEntity> transactionsToSave = new ArrayList<>();
+      Set<String> seenInThisImport = new HashSet<>();
+      int skipped = 0;
+
+      for (ParsedRow row : parsedRows) {
+        if (existingHashes.contains(row.importHash) || !seenInThisImport.add(row.importHash)) {
+          skipped++;
+          continue;
+        }
+
+        TransactionEntity tx = new TransactionEntity();
+        tx.setAccountId(row.accountId);
+        tx.setTransDate(row.transDate);
+        tx.setPostedDate(row.postDate);
+        tx.setDescription(row.description);
+        tx.setBankCategory(row.bankCategory);
+        tx.setCardRef(row.cardRef);
+        tx.setAmountCents(row.amountCents);
+        tx.setCurrency(row.currency);
+        tx.setSource(row.source);
+        tx.setImportHash(row.importHash);
+        tx.setStatementImport(statementImport);
+        transactionsToSave.add(tx);
+      }
+
+      if (!transactionsToSave.isEmpty()) {
+        repo.saveAll(transactionsToSave);
+      }
+
+      int inserted = transactionsToSave.size();
+      statementImport.setRowsInserted(inserted);
+      statementImport.setRowsSkipped(skipped);
+      statementImportRepository.save(statementImport);
+
+      return new ImportResult(inserted, skipped);
+    } finally {
+      Files.deleteIfExists(tempPdf);
     }
+  }
 
-    String text = PdfTextExtractor.extractAllText(new java.io.ByteArrayInputStream(fileBytes));
-    List<String> rawLines = Arrays.asList(text.split("\\R"));
-
-    int statementYear = guessStatementYear(text);
-
-    LocalDate statementStartDate = guessStatementStartDate(text);
-    LocalDate statementEndDate = guessStatementEndDate(text);
-
-    StatementImportEntity statementImport = new StatementImportEntity();
-    statementImport.setFilename(file.getOriginalFilename());
-    statementImport.setSource("CIBC");
-    statementImport.setStatementStartDate(statementStartDate);
-    statementImport.setStatementEndDate(statementEndDate);
-    statementImport.setUploadedAt(LocalDateTime.now());
-    statementImport.setRowsInserted(0);
-    statementImport.setRowsSkipped(0);
-    statementImport.setFileHash(fileHash);
-
-    statementImport = statementImportRepository.save(statementImport);
-
+  private List<ParsedRow> parseRows(List<String> rawLines, int statementYear) {
+    List<ParsedRow> parsedRows = new ArrayList<>();
     String currentCardRef = null;
     boolean inChargesSection = false;
-
-    int inserted = 0;
-    int skipped = 0;
 
     for (int i = 0; i < rawLines.size(); i++) {
       String line = cleanLine(rawLines.get(i));
       if (line.isEmpty()) continue;
 
-      // Start parsing only inside charges section
       if (line.startsWith("Your new charges and credits")) {
         inChargesSection = true;
         continue;
@@ -118,19 +174,16 @@ public class CibcPdfImportService {
         continue;
       }
 
-      // Skip obvious junk/header lines inside section
       if (shouldSkipLine(line)) {
         continue;
       }
 
-      // Detect card section
       if (line.startsWith("Card number")) {
         String[] parts = line.split("\\s+");
         currentCardRef = parts[parts.length - 1];
         continue;
       }
 
-      // Stop if we somehow drift into unrelated footer text
       if (line.startsWith("Total payments")
           || line.startsWith("Total interest")
           || line.startsWith("Your installment summary")
@@ -138,16 +191,12 @@ public class CibcPdfImportService {
         continue;
       }
 
-      // ---------- 1) Try normal one-line transaction ----------
       Matcher normal = TX_ROW.matcher(line);
       if (normal.matches()) {
-        ParsedRow row = buildNormalRow(statementYear, currentCardRef, normal);
-        if (saveIfNew(row, statementImport)) inserted++;
-        else skipped++;
+        parsedRows.add(buildNormalRow(statementYear, currentCardRef, normal));
         continue;
       }
 
-      // ---------- 2) Try foreign-currency multiline transaction ----------
       Matcher fxStart = FX_ROW_START.matcher(line);
       if (fxStart.matches() && i + 2 < rawLines.size()) {
         String line2 = cleanLine(rawLines.get(i + 1));
@@ -171,21 +220,14 @@ public class CibcPdfImportService {
             row.currency = "CAD";
             row.source = "CIBC";
 
-            if (saveIfNew(row, statementImport)) inserted++;
-            else skipped++;
-
-            i += 2; // consume the next 2 lines
-            continue;
+            parsedRows.add(row);
+            i += 2;
           }
         }
       }
     }
 
-    statementImport.setRowsInserted(inserted);
-    statementImport.setRowsSkipped(skipped);
-    statementImportRepository.save(statementImport);
-
-    return new ImportResult(inserted, skipped);
+    return parsedRows;
   }
 
   private ParsedRow buildNormalRow(int year, String currentCardRef, Matcher m) {
@@ -220,8 +262,8 @@ public class CibcPdfImportService {
     return row;
   }
 
-  private boolean saveIfNew(ParsedRow row, StatementImportEntity statementImport) throws Exception {
-    String importHash = sha256(
+  private static String buildImportHash(ParsedRow row) throws Exception {
+    return sha256(
         row.accountId + "|" +
         row.transDate + "|" +
         row.postDate + "|" +
@@ -229,26 +271,6 @@ public class CibcPdfImportService {
         row.amountCents + "|" +
         Objects.toString(row.cardRef, "")
     );
-
-    if (repo.existsByImportHash(importHash)) {
-      return false;
-    }
-
-    TransactionEntity tx = new TransactionEntity();
-    tx.setAccountId(row.accountId);
-    tx.setTransDate(row.transDate);
-    tx.setPostedDate(row.postDate);
-    tx.setDescription(row.description);
-    tx.setBankCategory(row.bankCategory);
-    tx.setCardRef(row.cardRef);
-    tx.setAmountCents(row.amountCents);
-    tx.setCurrency(row.currency);
-    tx.setSource(row.source);
-    tx.setImportHash(importHash);
-    tx.setStatementImport(statementImport);
-
-    repo.save(tx);
-    return true;
   }
 
   private static boolean shouldSkipLine(String line) {
@@ -275,7 +297,7 @@ public class CibcPdfImportService {
     );
     Matcher m = p.matcher(fullText);
     if (m.find()) {
-        return Integer.parseInt(m.group(1));
+      return Integer.parseInt(m.group(1));
     }
     return Year.now().getValue();
   }
@@ -335,17 +357,23 @@ public class CibcPdfImportService {
   private static String sha256(String input) throws Exception {
     MessageDigest md = MessageDigest.getInstance("SHA-256");
     byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
-    StringBuilder sb = new StringBuilder();
-    for (byte b : hash) {
-      sb.append(String.format("%02x", b));
-    }
-    return sb.toString();
+    return toHex(hash);
   }
 
-  private static String sha256Bytes(byte[] input) throws Exception {
+  private static String sha256File(Path path) throws Exception {
     MessageDigest md = MessageDigest.getInstance("SHA-256");
-    byte[] hash = md.digest(input);
-    StringBuilder sb = new StringBuilder();
+    try (InputStream in = Files.newInputStream(path)) {
+      byte[] buffer = new byte[8192];
+      int read;
+      while ((read = in.read(buffer)) != -1) {
+        md.update(buffer, 0, read);
+      }
+    }
+    return toHex(md.digest());
+  }
+
+  private static String toHex(byte[] hash) {
+    StringBuilder sb = new StringBuilder(hash.length * 2);
     for (byte b : hash) {
       sb.append(String.format("%02x", b));
     }
@@ -362,5 +390,6 @@ public class CibcPdfImportService {
     long amountCents;
     String currency;
     String source;
+    String importHash;
   }
 }
