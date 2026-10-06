@@ -9,6 +9,7 @@ import java.io.File;
 public class PdfTextExtractor {
 
   public static String extractAllText(File pdfFile) throws Exception {
+    // Load from the temporary file directly to avoid duplicate in-memory PDF copies.
     try (PDDocument doc = Loader.loadPDF(pdfFile)) {
       PDFTextStripper stripper = new PDFTextStripper();
       stripper.setSortByPosition(true);
